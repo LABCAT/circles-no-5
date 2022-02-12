@@ -4,9 +4,10 @@ import "p5/lib/addons/p5.sound";
 import * as p5 from "p5";
 import { Midi } from '@tonejs/midi'
 import PlayIcon from './functions/PlayIcon.js';
+import AnimatedCircle from './classes/AnimatedCircle.js';
 
-import audio from "../audio/circles-no-3.ogg";
-import midi from "../audio/circles-no-3.mid";
+import audio from "../audio/circles-no-5.ogg";
+import midi from "../audio/circles-no-5.mid";
 
 const P5SketchWithAudio = () => {
     const sketchRef = useRef();
@@ -25,10 +26,15 @@ const P5SketchWithAudio = () => {
 
         p.PPQ = 3840 * 4;
 
+        p.tempo = 86;
+
+        p.barAsSeconds = 60 / p.tempo * 4;
+
         p.loadMidi = () => {
             Midi.fromUrl(midi).then(
                 function(result) {
-                    const noteSet1 = result.tracks[5].notes; // Synth 1
+                    console.log(result);
+                    const noteSet1 = result.tracks[6].notes; // Synth 3 - FullerStrings
                     p.scheduleCueSet(noteSet1, 'executeCueSet1');
                     p.audioLoaded = true;
                     document.getElementById("loader").classList.add("loading--complete");
@@ -61,19 +67,44 @@ const P5SketchWithAudio = () => {
         p.setup = () => {
             p.canvas = p.createCanvas(p.canvasWidth, p.canvasHeight);
             p.background(0);
+            p.colorMode(p.HSB);
         }
 
         p.draw = () => {
             if(p.audioLoaded && p.song.isPlaying()){
-
+                p.background(0);
+                for (let i = 0; i < p.circleSet.length; i++) {
+                    const circle = p.circleSet[i];
+                    circle.draw();
+                }
             }
         }
 
+        p.circleSet = [];
+        p.xPos = 0;
+        p.yPos = 0;
+        p.hue = 0;
+        p.size = 0;
+
         p.executeCueSet1 = (note) => {
-            p.background(p.random(255), p.random(255), p.random(255));
-            p.fill(p.random(255), p.random(255), p.random(255));
-            p.noStroke();
-            p.ellipse(p.width / 2, p.height / 2, p.width / 4, p.width / 4);
+            if(p.xPos === 0 && p.yPos === 0){
+                p.xPos = p.random(0, p.width);
+                p.yPos = p.random(0, p.height);
+                p.hue = p.random(0, 360);
+                p.size = p.width;
+            }
+
+            const { duration } = note;
+
+            if( note.currentCue < 16){
+                p.circleSet.push(
+                    new AnimatedCircle(p, p.xPos, p.yPos, p.hue, p.size, p.barAsSeconds / 2)
+                );
+                if(duration > 1){
+                    p.size = p.size - p.width / 8;
+                    p.hue = p.hue + 15 < 360 ? p.hue + 15 : p.hue + 15 - 360;
+                }
+            }
         }
 
         p.mousePressed = () => {
