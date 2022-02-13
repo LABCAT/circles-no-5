@@ -64,47 +64,91 @@ const P5SketchWithAudio = () => {
             }
         } 
 
+        p.bgHue = 0;
+
+        p.packedCirclesSet = [];
+
         p.setup = () => {
             p.canvas = p.createCanvas(p.canvasWidth, p.canvasHeight);
-            p.background(0);
             p.colorMode(p.HSB);
+            p.bgHue = p.random(0, 360);
+            p.background(p.bgHue, 100, 100);
+
+            while(p.packedCirclesSet.length < 5) {
+                const circle = {
+                    x: p.random(0, p.width),
+                    y: p.random(0, p.height),
+                    r: p.random(p.width / 6, p.width / 3) / 2
+                }
+                
+                let overlapping = false;
+                for (let i = 0; i < p.packedCirclesSet.length; i++) {
+                    const existingCircle = p.packedCirclesSet[i];
+                    const distance = p.dist(circle.x, circle.y, existingCircle.x, existingCircle.y);
+                    if (distance < circle.r + existingCircle.r) {
+                        overlapping = true;
+                    }
+                }
+                if(!overlapping) {
+                    p.packedCirclesSet.push(circle);
+                }
+            }
         }
 
         p.draw = () => {
             if(p.audioLoaded && p.song.isPlaying()){
-                p.background(0);
-                for (let i = 0; i < p.circleSet.length; i++) {
-                    const circle = p.circleSet[i];
+                p.background(p.bgHue, 100, 100);
+                for (let i = 0; i < p.mainCircleSet.length; i++) {
+                    const circle = p.mainCircleSet[i];
                     circle.draw();
                 }
             }
         }
 
-        p.circleSet = [];
+        p.mainCircleSet = [];
+        p.packedCircleIndex = 0;
         p.xPos = 0;
         p.yPos = 0;
         p.hue = 0;
+        p.hueDirection = 0;
         p.size = 0;
+        p.sizeReducer = 0;
 
         p.executeCueSet1 = (note) => {
-            if(p.xPos === 0 && p.yPos === 0){
-                p.xPos = p.random(0, p.width);
-                p.yPos = p.random(0, p.height);
+            const { duration, currentCue } = note;
+            
+            if(currentCue % 16 == 1 && currentCue < 81){
+                const circle = p.packedCirclesSet[p.packedCircleIndex];
                 p.hue = p.random(0, 360);
-                p.size = p.width;
+                p.hueDirection = Math.random() < 0.5 ? 'up' : 'down';
+                p.xPos = circle.x;
+                p.yPos = circle.y;
+                p.size = circle.r * 2;
+                p.sizeReducer = p.size / 8;
+                p.packedCircleIndex++;
             }
 
-            const { duration } = note;
-
-            if( note.currentCue < 16){
-                p.circleSet.push(
-                    new AnimatedCircle(p, p.xPos, p.yPos, p.hue, p.size, p.barAsSeconds / 2)
+            if(currentCue < 81) {
+                const size = duration > 1 ? p.size : p.size / 16;
+                p.mainCircleSet.push(
+                    new AnimatedCircle(p, p.xPos, p.yPos, p.hue, size, p.barAsSeconds / 2)
                 );
                 if(duration > 1){
-                    p.size = p.size - p.width / 8;
-                    p.hue = p.hue + 15 < 360 ? p.hue + 15 : p.hue + 15 - 360;
+                    p.size = p.size - p.sizeReducer;
+                    if(p.hueDirection === 'up') {
+                        p.hue = p.hue + 15 < 360 ? p.hue + 15 : p.hue + 15 - 360;
+                    }
+                    else {
+                        p.hue = p.hue - 15 > 0 ? p.hue - 15 : p.hue - 15 + 360;
+                    }
                 }
             }
+            else {
+                p.mainCircleSet.push(
+                    new AnimatedCircle(p, p.width / 2, p.height / 2, p.hue, p.width * 2, p.barAsSeconds / 2, 0.01)
+                );
+            }
+            
         }
 
         p.mousePressed = () => {
