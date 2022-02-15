@@ -35,7 +35,9 @@ const P5SketchWithAudio = () => {
                 function(result) {
                     console.log(result);
                     const noteSet1 = result.tracks[6].notes; // Synth 3 - FullerStrings
+                    const noteSet2 = result.tracks[1].notes; // Redrum - Dub Kit 01
                     p.scheduleCueSet(noteSet1, 'executeCueSet1');
+                    p.scheduleCueSet(noteSet2, 'executeCueSet2', true);
                     p.audioLoaded = true;
                     document.getElementById("loader").classList.add("loading--complete");
                     document.getElementById("play-icon").classList.remove("fade-out");
@@ -72,13 +74,17 @@ const P5SketchWithAudio = () => {
             p.canvas = p.createCanvas(p.canvasWidth, p.canvasHeight);
             p.colorMode(p.HSB);
             p.bgHue = p.random(0, 360);
-            p.background(p.bgHue, 100, 100);
+            p.background(p.bgHue, 100, 100, 0.2);
 
-            while(p.packedCirclesSet.length < 5) {
+            while(p.packedCirclesSet.length < 300) {
+                let radius = p.random(p.width / 6, p.width / 3) / 2; 
+                if(p.packedCirclesSet.length >= 5) {
+                    radius = p.random(p.width / 64, p.width / 32) / 2
+                }
                 const circle = {
                     x: p.random(0, p.width),
                     y: p.random(0, p.height),
-                    r: p.random(p.width / 6, p.width / 3) / 2
+                    r: radius
                 }
                 
                 let overlapping = false;
@@ -87,6 +93,7 @@ const P5SketchWithAudio = () => {
                     const distance = p.dist(circle.x, circle.y, existingCircle.x, existingCircle.y);
                     if (distance < circle.r + existingCircle.r) {
                         overlapping = true;
+                        break;
                     }
                 }
                 if(!overlapping) {
@@ -97,7 +104,7 @@ const P5SketchWithAudio = () => {
 
         p.draw = () => {
             if(p.audioLoaded && p.song.isPlaying()){
-                p.background(p.bgHue, 100, 100);
+                // p.background(p.bgHue, 100, 100);
                 for (let i = 0; i < p.mainCircleSet.length; i++) {
                     const circle = p.mainCircleSet[i];
                     circle.draw();
@@ -106,7 +113,7 @@ const P5SketchWithAudio = () => {
         }
 
         p.mainCircleSet = [];
-        p.packedCircleIndex = 0;
+        p.bigCircleIndex = 0;
         p.xPos = 0;
         p.yPos = 0;
         p.hue = 0;
@@ -118,14 +125,14 @@ const P5SketchWithAudio = () => {
             const { duration, currentCue } = note;
             
             if(currentCue % 16 == 1 && currentCue < 81){
-                const circle = p.packedCirclesSet[p.packedCircleIndex];
+                const circle = p.packedCirclesSet[p.bigCircleIndex];
                 p.hue = p.random(0, 360);
                 p.hueDirection = Math.random() < 0.5 ? 'up' : 'down';
                 p.xPos = circle.x;
                 p.yPos = circle.y;
                 p.size = circle.r * 2;
                 p.sizeReducer = p.size / 8;
-                p.packedCircleIndex++;
+                p.bigCircleIndex++;
             }
 
             if(currentCue < 81) {
@@ -145,10 +152,56 @@ const P5SketchWithAudio = () => {
             }
             else {
                 p.mainCircleSet.push(
-                    new AnimatedCircle(p, p.width / 2, p.height / 2, p.hue, p.width * 2, p.barAsSeconds / 2, 0.01)
+                    new AnimatedCircle(p, p.width / 2, p.height / 2, p.hue, p.width * 2, p.barAsSeconds / 2, 0.002)
                 );
             }
             
+        }
+
+        p.smallCircleIndex = 5;
+
+        p.executeCueSet2 = (note) => {
+            const { duration, currentCue, midi } = note;
+            let addCircle = false,
+                hue = 0,
+                saturation = 0,
+                brightness = 0, 
+                alpha = 1;
+            
+            switch (midi) {
+                case 36:
+                    addCircle = true;
+                    brightness = 100;
+                    break;
+                case 37:
+                    addCircle = true;
+                    break;
+                case 44:
+                    addCircle = true;
+                    hue = p.random(0, 360);
+                    saturation = 50;
+                    brightness = 50;
+                    alpha = 0.5;
+                    break;
+                default:
+                    addCircle = false;
+                    break;
+            }
+            if(addCircle){
+                const circle = p.packedCirclesSet[p.smallCircleIndex], 
+                    { x, y, r } = circle, 
+                    size = r * 2;
+                p.fill(hue, saturation, brightness, alpha);
+                p.ellipse(x, y, size, size);
+                if(midi == 44) {
+                    p.fill(hue + 30, saturation, brightness, alpha);
+                    p.ellipse(x, y, size / 2, size / 2);
+                    p.fill(hue + 60, saturation, brightness, alpha);
+                    p.ellipse(x, y, size / 4, size / 4);
+                }
+                
+                p.smallCircleIndex++
+            }
         }
 
         p.mousePressed = () => {
