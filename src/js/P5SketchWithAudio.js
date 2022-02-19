@@ -33,7 +33,6 @@ const P5SketchWithAudio = () => {
         p.loadMidi = () => {
             Midi.fromUrl(midi).then(
                 function(result) {
-                    console.log(result);
                     const noteSet1 = result.tracks[6].notes; // Synth 3 - FullerStrings
                     const noteSet2 = result.tracks[1].notes; // Redrum - Dub Kit 01
                     p.scheduleCueSet(noteSet1, 'executeCueSet1');
@@ -161,12 +160,14 @@ const P5SketchWithAudio = () => {
         p.smallCircleIndex = 5;
 
         p.executeCueSet2 = (note) => {
-            const { duration, currentCue, midi } = note;
+            const { duration, midi } = note;
             let addCircle = false,
                 hue = 0,
                 saturation = 0,
                 brightness = 0, 
-                alpha = 1;
+                alpha = 1,
+                delayAmount = duration * 1000;;
+            p.stroke(0);
             
             switch (midi) {
                 case 36:
@@ -176,30 +177,62 @@ const P5SketchWithAudio = () => {
                 case 37:
                     addCircle = true;
                     break;
+                case 42:
+                    addCircle = true;
+                    hue = p.random(0, 360);
+                    saturation = 100;
+                    brightness = 100;
+                    alpha = 0.1;
+                    break;
                 case 44:
                     addCircle = true;
                     hue = p.random(0, 360);
-                    saturation = 50;
-                    brightness = 50;
+                    saturation = 75;
+                    brightness = 75;
+                    break;
+                case 45:
+                    addCircle = true;
+                    hue = p.bgHue;
+                    saturation = 100;
+                    brightness = 100;
                     alpha = 0.5;
                     break;
                 default:
                     addCircle = false;
                     break;
             }
+
             if(addCircle){
                 const circle = p.packedCirclesSet[p.smallCircleIndex], 
                     { x, y, r } = circle, 
                     size = r * 2;
-                p.fill(hue, saturation, brightness, alpha);
-                p.ellipse(x, y, size, size);
-                if(midi == 44) {
-                    p.fill(hue + 30, saturation, brightness, alpha);
-                    p.ellipse(x, y, size / 2, size / 2);
-                    p.fill(hue + 60, saturation, brightness, alpha);
-                    p.ellipse(x, y, size / 4, size / 4);
-                }
                 
+                for (let i = 1; i < 4; i = i + i / 2) {
+                    setTimeout(
+                        function () {
+                            if(midi === 44 || midi === 45) {
+                                p.stroke(0, 0, 100);
+                            }
+                            else if(midi === 42) {
+                                p.stroke(hue, saturation, brightness, alpha);
+                            }
+                            p.fill(hue, saturation, brightness, alpha);
+                            p.ellipse(x, y, size / i, size / i);
+                            if(midi === 44) {
+                                hue = hue + 60 > 360 ? hue + 60 - 360 : hue + 60;
+                            }
+                            else if(midi === 36 || midi === 37) {
+                                if(brightness) {
+                                    brightness = 0;
+                                }
+                                else {
+                                    brightness = 100;
+                                }
+                            }
+                        },
+                        (delayAmount * i)
+                    );
+                }
                 p.smallCircleIndex++
             }
         }
