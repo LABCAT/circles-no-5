@@ -75,10 +75,13 @@ const P5SketchWithAudio = () => {
             p.bgHue = p.random(0, 360);
             p.background(p.bgHue, 100, 100, 0.2);
 
-            while(p.packedCirclesSet.length < 300) {
+            while(p.packedCirclesSet.length < 200) {
                 let radius = p.random(p.width / 6, p.width / 3) / 2; 
-                if(p.packedCirclesSet.length >= 5) {
+                if(p.packedCirclesSet.length >= 13) {
                     radius = p.random(p.width / 64, p.width / 32) / 2
+                }
+                else if(p.packedCirclesSet.length >= 5) {
+                    radius = p.random(p.width / 24, p.width / 12) / 2; 
                 }
                 const circle = {
                     x: p.random(0, p.width),
@@ -157,7 +160,12 @@ const P5SketchWithAudio = () => {
             
         }
 
-        p.smallCircleIndex = 5;
+        p.mediumCircleIndex = 5;
+        p.mediumCircleHue = 5;
+        p.mediumCircleSize = 0;
+        p.mediumCircleIndexCount = 0;
+
+        p.smallCircleIndex = 13;
 
         p.executeCueSet2 = (note) => {
             const { duration, midi } = note;
@@ -166,7 +174,7 @@ const P5SketchWithAudio = () => {
                 saturation = 0,
                 brightness = 0, 
                 alpha = 1,
-                delayAmount = duration * 1000;;
+                delayAmount = duration * 1000;
             p.stroke(0);
             
             switch (midi) {
@@ -186,7 +194,7 @@ const P5SketchWithAudio = () => {
                     break;
                 case 44:
                     addCircle = true;
-                    hue = p.random(0, 360);
+                    p.mediumCircleHue = p.mediumCircleIndexCount === 0 ? p.random(0, 360) : p.mediumCircleHue;
                     saturation = 75;
                     brightness = 75;
                     break;
@@ -203,37 +211,60 @@ const P5SketchWithAudio = () => {
             }
 
             if(addCircle){
-                const circle = p.packedCirclesSet[p.smallCircleIndex], 
+                const circle = midi === 44 ? p.packedCirclesSet[p.mediumCircleIndex] : p.packedCirclesSet[p.smallCircleIndex], 
                     { x, y, r } = circle, 
                     size = r * 2;
                 
                 for (let i = 1; i < 4; i = i + i / 2) {
-                    setTimeout(
-                        function () {
-                            if(midi === 44 || midi === 45) {
+                    if(midi === 44) {
+                        p.mediumCircleSize = p.mediumCircleIndexCount === 0 ? size : size - (size / 6  * p.mediumCircleIndexCount);
+                        setTimeout(
+                            function () {
+                                const size = i > 2 ? p.mediumCircleSize / 2 : p.mediumCircleSize;
                                 p.stroke(0, 0, 100);
-                            }
-                            else if(midi === 42) {
-                                p.stroke(hue, saturation, brightness, alpha);
-                            }
-                            p.fill(hue, saturation, brightness, alpha);
-                            p.ellipse(x, y, size / i, size / i);
-                            if(midi === 44) {
-                                hue = hue + 60 > 360 ? hue + 60 - 360 : hue + 60;
-                            }
-                            else if(midi === 36 || midi === 37) {
-                                if(brightness) {
-                                    brightness = 0;
+                                p.fill(p.mediumCircleHue, saturation, brightness, alpha);
+                                p.ellipse(x, y, size, size);
+                                p.mediumCircleHue = p.mediumCircleHue + 60 > 360 ? p.mediumCircleHue + 60 - 360 : p.mediumCircleHue + 60;
+                            },
+                            (delayAmount * i)
+                        );
+                        
+                    }
+                    else {
+                        setTimeout(
+                            function () {
+                                if(midi === 45) {
+                                    p.stroke(0, 0, 100);
                                 }
-                                else {
-                                    brightness = 100;
+                                else if(midi === 42) {
+                                    p.stroke(hue, saturation, brightness, alpha);
                                 }
-                            }
-                        },
-                        (delayAmount * i)
-                    );
+                                p.fill(hue, saturation, brightness, alpha);
+                                p.ellipse(x, y, size / i, size / i);
+                                if(midi === 36 || midi === 37) {
+                                    if(brightness) {
+                                        brightness = 0;
+                                    }
+                                    else {
+                                        brightness = 100;
+                                    }
+                                }
+                            },
+                            (delayAmount * i)
+                        );
+                    }
                 }
-                p.smallCircleIndex++
+                if(midi === 44) {
+                    p.mediumCircleIndexCount++;
+                    if(p.mediumCircleIndexCount > 5) {
+                        p.mediumCircleIndexCount = 0;
+                        p.mediumCircleIndex++
+                    }
+                }
+                else {
+                    p.smallCircleIndex++
+                }
+                
             }
         }
 
